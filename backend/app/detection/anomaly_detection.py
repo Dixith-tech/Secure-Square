@@ -1,7 +1,9 @@
 import joblib
 import pandas as pd
+from pathlib import Path
 
-model = joblib.load("app/ml/model.pkl")
+_model_path = Path(__file__).resolve().parent.parent / "ml" / "model.pkl"
+model = joblib.load(str(_model_path))
 
 
 def detect_anomaly(login_attempts, location_change, device_change):

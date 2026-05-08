@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query, BackgroundTasks
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -57,8 +58,7 @@ async def lifespan(app: FastAPI):
     create_tables()
     
     if not test_connection():
-        logger.error("✗ Cannot start - Database connection failed")
-        raise Exception("Database connection failed")
+        logger.warning("⚠ Database connection test failed — server starting anyway")
     
     logger.info("✅ Platform started successfully")
     yield
@@ -146,7 +146,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     db.refresh(new_user)
     
     # Create token
-    token = create_access_token({"sub": new_user.id, "role": "analyst"})
+    token = create_access_token({"sub": str(new_user.id), "role": "analyst"})
     logger.info(f"✓ User registered: {user_data.email}")
     
     return TokenResponse(
@@ -178,7 +178,7 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
             logger.warning(f"⚠ New device detected for user: {user.email}")
     
     # Create token
-    token = create_access_token({"sub": user.id, "role": user.role})
+    token = create_access_token({"sub": str(user.id), "role": user.role})
     logger.info(f"✓ User logged in: {user.email}")
     
     return TokenResponse(
@@ -395,18 +395,18 @@ async def websocket_route(websocket):
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     logger.error(f"HTTP Exception: {exc.detail}")
-    return {
-        "error": exc.detail,
-        "status_code": exc.status_code
-    }
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.detail, "status_code": exc.status_code}
+    )
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc):
     logger.error(f"Unhandled Exception: {str(exc)}")
-    return {
-        "error": "Internal server error",
-        "status_code": 500
-    }
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal server error", "status_code": 500}
+    )
 
 # ==================== BACKGROUND TASKS ====================
 async def send_threat_notification(threat: ThreatLog):

@@ -33,6 +33,7 @@
     "app",
     "components",
     "services",
+    "lib",
     ".next/types/**/*.ts"
   ],
   "references": [],

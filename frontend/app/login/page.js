@@ -150,7 +150,7 @@ export default function Login() {
           <div className="mt-6 p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
             <p className="text-xs text-gray-400 font-semibold mb-2">Demo Credentials:</p>
             <p className="text-xs text-gray-500 mb-1">Email: <span className="text-gray-400 font-mono">admin@example.com</span></p>
-            <p className="text-xs text-gray-500">Password: <span className="text-gray-400 font-mono">password</span></p>
+            <p className="text-xs text-gray-500">Password: <span className="text-gray-400 font-mono">Password1</span></p>
           </div>
 
           {/* Footer */}
