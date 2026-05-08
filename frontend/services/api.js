@@ -1,7 +1,11 @@
 import axios from "axios";
 
+// In production on Vercel, the backend is accessible at /_/backend (experimentalServices route prefix)
+// In local dev, override with NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/_/backend";
+
 const API = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "",
+  baseURL: BASE_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
