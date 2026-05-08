@@ -1,29 +1,20 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/next"
+  "experimentalServices": {
+    "frontend": {
+      "type": "web",
+      "src": "frontend",
+      "framework": "nextjs",
+      "installCommand": "npm install",
+      "buildCommand": "npm run build",
+      "outputDirectory": ".next"
     },
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
+    "backend": {
+      "type": "web",
+      "src": "backend",
+      "framework": "fastapi",
+      "installCommand": "pip install -r requirements.txt",
+      "buildCommand": "",
+      "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "frontend/$1"
-    }
-  ],
-  "env": {
-    "PYTHONPATH": "backend"
   }
 }
