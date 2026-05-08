@@ -22,8 +22,8 @@ build/
 # Logs
 *.log
 
-# ML Model (regenerate with train_model.py)
-backend/app/ml/model.pkl
+# ML Model — committed for Vercel deployment
+# To regenerate: python backend/app/ml/train_model.py
 
 # Node.js / Frontend
 frontend/node_modules/

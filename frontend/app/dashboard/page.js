@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, Shield, TrendingUp, Lock } from 'lucide-react';
+import { AlertTriangle, Shield, TrendingUp, Lock, RefreshCw } from 'lucide-react';
 import API from '@/services/api';
 import ThreatTable from '@/components/ThreatTable';
 import AttackMap from '@/components/AttackMap';
 import StatCard from '@/components/StatCard';
+
+const POLL_INTERVAL = 15000; // 15 seconds
 
 export default function Dashboard() {
   const [threats, setThreats] = useState([]);
@@ -21,94 +23,58 @@ export default function Dashboard() {
   ]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [wsConnected, setWsConnected] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState(null);
 
   // Fetch threats data
-  useEffect(() => {
-    const fetchThreats = async () => {
-      try {
-        const response = await API.get('/api/v1/threats?limit=10');
-        setThreats(response.data.items || []);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching threats:', err);
-        setError('Failed to load threats');
-        setLoading(false);
-      }
-    };
+  const fetchThreats = useCallback(async () => {
+    try {
+      const response = await API.get('/api/v1/threats?limit=10');
+      setThreats(response.data.items || []);
+      setError(null);
+      setLastRefresh(new Date());
 
-    fetchThreats();
-  }, []);
+      // Update chart with current threat count
+      setChartData(prev => {
+        const newPoint = {
+          time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+          attacks: response.data.total || 0
+        };
+        return [...prev, newPoint].slice(-12);
+      });
+    } catch (err) {
+      console.error('Error fetching threats:', err);
+      // Only show error if we never loaded successfully
+      if (threats.length === 0) {
+        setError('Failed to load threats');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [threats.length]);
 
   // Fetch statistics
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await API.get('/api/v1/stats/threats');
-        setStats(response.data);
-      } catch (err) {
-        console.error('Error fetching stats:', err);
-      }
-    };
-
-    fetchStats();
-    const interval = setInterval(fetchStats, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await API.get('/api/v1/stats/threats');
+      setStats(response.data);
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    }
   }, []);
 
-  // WebSocket connection for real-time updates
+  // Initial fetch + polling
   useEffect(() => {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8000/ws';
-    const ws = new WebSocket(wsUrl);
+    fetchThreats();
+    fetchStats();
 
-    ws.onopen = () => {
-      console.log('✓ WebSocket connected');
-      setWsConnected(true);
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'threat') {
-          // Add new threat to list
-          setThreats(prev => [data.data, ...prev].slice(0, 10));
-          
-          // Update chart with new data point
-          setChartData(prev => {
-            const newData = [...prev];
-            newData.push({
-              time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-              attacks: (prev[prev.length - 1]?.attacks || 0) + (Math.random() > 0.5 ? 1 : 0)
-            });
-            return newData.slice(-12); // Keep last 12 data points
-          });
-        }
-      } catch (err) {
-        console.error('Error parsing WebSocket message:', err);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error('✗ WebSocket error:', error);
-      setWsConnected(false);
-    };
-
-    ws.onclose = () => {
-      console.log('✗ WebSocket disconnected');
-      setWsConnected(false);
-      // Attempt to reconnect after 3 seconds
-      setTimeout(() => {
-        console.log('Attempting to reconnect...');
-      }, 3000);
-    };
+    const threatsInterval = setInterval(fetchThreats, POLL_INTERVAL);
+    const statsInterval = setInterval(fetchStats, 30000);
 
     return () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
+      clearInterval(threatsInterval);
+      clearInterval(statsInterval);
     };
-  }, []);
+  }, [fetchThreats, fetchStats]);
 
   if (loading) {
     return (
@@ -127,9 +93,14 @@ export default function Dashboard() {
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">Security Dashboard</h1>
         <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+          <RefreshCw className="w-3 h-3 text-green-500" />
           <p className="text-sm text-gray-400">
-            {wsConnected ? '✓ Live monitoring active' : '✗ Monitoring offline'}
+            Auto-refresh active
+            {lastRefresh && (
+              <span className="ml-2 text-gray-500">
+                · Last update: {lastRefresh.toLocaleTimeString()}
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -179,7 +150,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Attack Graph */}
         <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
-          <h2 className="text-2xl font-bold mb-6">Live Attack Timeline</h2>
+          <h2 className="text-2xl font-bold mb-6">Attack Timeline</h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#333" />

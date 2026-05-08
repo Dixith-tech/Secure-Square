@@ -18,14 +18,14 @@ logger = logging.getLogger(__name__)
 
 # Configure connection pool for production
 if "postgresql" in DATABASE_URL:
-    # PostgreSQL connection pool settings
+    # PostgreSQL — reduced pool for serverless
     engine = create_engine(
         DATABASE_URL,
         poolclass=QueuePool,
-        pool_size=20,
-        max_overflow=40,
-        pool_pre_ping=True,  # Verify connections before using
-        pool_recycle=3600,   # Recycle connections every hour
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+        pool_recycle=300,
         echo=False,
         connect_args={
             "connect_timeout": 10,

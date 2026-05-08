@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
@@ -25,7 +24,8 @@ from app.schemas import (
 from app.detection.phishing_detector import detect_phishing
 from app.detection.anomaly_detection import detect_anomaly
 from app.detection.geo_detection import get_location
-from app.websocket import manage_connections, websocket_endpoint
+# WebSocket disabled for Vercel serverless deployment
+# from app.websocket import manage_connections, websocket_endpoint
 from app.auth import (
     hash_password, verify_password, create_access_token, get_current_user,
     get_admin_user, detect_new_device
@@ -50,12 +50,35 @@ def create_tables():
         logger.error(f"✗ Database table creation failed: {str(e)}")
         raise
 
+def seed_demo_user():
+    """Create a demo admin user if none exists"""
+    try:
+        db = SessionLocal()
+        existing = db.query(User).filter(User.email == "admin@example.com").first()
+        if not existing:
+            demo_user = User(
+                username="admin",
+                email="admin@example.com",
+                hashed_password=hash_password("password"),
+                role="admin",
+                is_active=True
+            )
+            db.add(demo_user)
+            db.commit()
+            logger.info("✓ Demo admin user created (admin@example.com / password)")
+        else:
+            logger.info("✓ Demo admin user already exists")
+        db.close()
+    except Exception as e:
+        logger.error(f"✗ Failed to seed demo user: {str(e)}")
+
 # ==================== LIFESPAN ====================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("🚀 Starting AI Security Platform...")
     create_tables()
+    seed_demo_user()
     
     if not test_connection():
         logger.warning("⚠ Database connection test failed — server starting anyway")
@@ -90,13 +113,6 @@ app.add_middleware(
     allow_headers=["*"],
     max_age=3600,
 )
-
-# Security middleware
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=[
-    "localhost",
-    "127.0.0.1",
-    os.getenv("ALLOWED_HOST", "localhost")
-])
 
 # Gzip compression
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -386,10 +402,8 @@ async def get_threat_stats(
     )
 
 # ==================== WEBSOCKET ====================
-@app.websocket("/ws")
-async def websocket_route(websocket):
-    """WebSocket connection for real-time threat updates"""
-    await websocket_endpoint(websocket)
+# WebSocket endpoint disabled for Vercel serverless deployment.
+# Real-time updates are handled via HTTP polling on the frontend.
 
 # ==================== ERROR HANDLERS ====================
 @app.exception_handler(HTTPException)

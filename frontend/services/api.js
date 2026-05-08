@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "",
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -28,11 +28,11 @@ API.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Handle 401 - redirect to login
+    // Handle 401 - redirect to login (only if not already on login page)
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
     }
