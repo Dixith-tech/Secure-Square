@@ -1,8 +1,8 @@
 import axios from "axios";
 
-// In production on Vercel, the backend is accessible at /_/backend (experimentalServices route prefix)
-// In local dev, override with NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/_/backend";
+// Local dev: set NEXT_PUBLIC_API_URL=http://127.0.0.1:8000 in frontend/.env.local
+// Production (Vercel): empty string uses same domain — /api/* routes to FastAPI via vercel.json
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 const API = axios.create({
   baseURL: BASE_URL,

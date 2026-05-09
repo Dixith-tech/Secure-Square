@@ -8,11 +8,10 @@ import logging
 
 load_dotenv()
 
-# Get database URL from environment with fallback
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "sqlite:///./security_platform.db"
-)
+# Get database URL from environment
+# On Vercel serverless, /tmp is the only writable directory
+_default_db = "sqlite:////tmp/security_platform.db" if os.path.exists("/tmp") else "sqlite:///./security_platform.db"
+DATABASE_URL = os.getenv("DATABASE_URL", _default_db)
 
 logger = logging.getLogger(__name__)
 

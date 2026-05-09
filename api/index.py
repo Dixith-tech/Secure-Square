@@ -1,16 +1,19 @@
 """
 Vercel Serverless Entry Point for FastAPI backend.
-Vercel routes /api/* requests to this file.
-Uses Mangum to adapt FastAPI (ASGI) to serverless handler.
+Routes: /api/* → this file → FastAPI app via Mangum (ASGI adapter).
 """
 import sys
 import os
 
-# Add the backend directory to the Python path
+# Add backend to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
-from mangum import Mangum
-from app.main import app
+# Set SQLite to /tmp for serverless (writable) when no DATABASE_URL is set
+if not os.environ.get("DATABASE_URL"):
+    os.environ["DATABASE_URL"] = "sqlite:////tmp/security_platform.db"
 
-# Mangum wraps FastAPI for serverless (AWS Lambda / Vercel)
+from mangum import Mangum
+from app.main import app  # noqa: E402
+
+# Mangum wraps the ASGI app for AWS Lambda / Vercel serverless
 handler = Mangum(app, lifespan="off")
